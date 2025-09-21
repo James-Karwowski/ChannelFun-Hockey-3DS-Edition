@@ -3,7 +3,7 @@
 #---------------------------------------------------------------------------------
 
 # Project settings
-TARGET    := 3DSProject
+TARGET    := ChF-Hockey
 SOURCES   := source
 INCLUDES  := include
 
