@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/devkitPro/libctru/include/**",
+                "C:/devkitpro/**",
+                "C:/devkitpro/devkitARM/arm-none-eabi/include/**",
+                "C:/devkitpro/devkitARM/lib/gcc/arm-none-eabi/**",
+                "C:/devkitpro/libctru/include/**",
+                "C:/devkitpro/portlibs/3ds/bin/**",
+                "C:/devkitPro/libctru//lib/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "configurationProvider": "ms-vscode.makefile-tools"
+        }
+    ],
+    "version": 4
+}
