@@ -11,7 +11,7 @@ Why not?
 But seriously, the purpose of this project was so that I can introduce myself to the general idea of game development without a game engine.
 
 # Is it available yet?
-At the moment, it is still a work-in-progress.
+At the moment, the game is still a work-in-progress, and it hasn't been released yet.
 
 # How can I play?
 To play Channel Fun 'Hockey', you will need a original 3DS (or newer) with CFW (Custom Firmware). From there, download the .3dsx file above and send it to the appropriate folder in your SD card. After that, it should be available to for you to play. Enjoy!
