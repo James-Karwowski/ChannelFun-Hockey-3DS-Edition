@@ -22,7 +22,7 @@ void loadMenu(int menu) {
     consoleClear();
     if (menu == 0) {
         printf("\nWelcome! Please review the info on this screen:\n\n"
-               "Game: Channel Fun 'Hockey' (3DS Edition)\nVersion: 0.0.1 Alpha\n\n"
+               "Fairchild 'Hockey' (3DS Edition)\nVersion: 0.0.1\n\n"
                "Press A to go to the main menu.\nPress START to exit.\n\n");
     } else if (menu == 1) {
         printf("Main Menu:\n"
