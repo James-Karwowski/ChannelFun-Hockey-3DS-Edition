@@ -9,7 +9,7 @@ Channel Fun 'Hockey' (3DS Edition) is a port of the original game from the Fairc
 The purpose of this project was so that I can introduce myself to the general idea of game development without using a game engine.
 
 # Is it available yet?
-At the moment, the game is still a work-in-progress, and it requires a lot of development before the .3dsx can be submitted.
+At the moment, the game is still a work-in-progress, and it requires a lot of development before the game is fully complete.
 
 # Who are You?
 As of the creation of this repository, I am a first-year CS Major at the University of North Carolina at Charlotte with the status of Junior. I am planning on having a concentration in Cyber Security.
