@@ -1,117 +1,44 @@
 #include <3ds.h>
-#include <stdio.h>
 #include <citro2d.h>
 #include <citro3d.h>
+#include <stdio.h>
 
-// Function prototypes
-void loadAssets(int menu);
-void loadMenu(int menu);
-void resetScreen(void);
+// Forward declarations
 void changeScreen(int menu);
+void loadMenu(int menu);
+void loadAssets(int menu);
+void resetScreen();
+
+// citro2d targets
+static C3D_RenderTarget* top;
+static C3D_RenderTarget* bottom;
 
 void loadAssets(int menu) {
-    // Placeholder for loading assets based on menu
-    if(menu == 0){
-        // Load assets for welcome screen
-        return;
-    } else if(menu == 1){
-        // Load assets for main menu
-        // Console text, options, etc.
-        return;
-    } else if(menu == 2){
-        // Load assets for single-player mode
-        // Two paddles, puck, scoreboard, etc.
-    } else if(menu == 3){
-        // Load assets for multiplayer mode
-        // Two paddles, puck, scoreboard, etc.
-        return;
-    }
+    // Placeholder for graphics assets depending on menu
+    (void)menu;
 }
 
 void loadMenu(int menu) {
-    if(menu == 0){
-        printf("\nWelcome! Please review the info on this screen:\n\n\nGame: Channel Fun 'Hockey' (3DS Edition)\nVersion: 0.0.1 Alpha\n\nPress A to go to the main menu.\nPress START to exit.\n\n");
-
-        // Main loop
-        while (aptMainLoop()) {
-            hidScanInput();
-
-            // Exit on START button
-            u32 kDown = hidKeysDown();
-            if (kDown & KEY_START) break;
-
-            if (kDown & KEY_A) {
-                changeScreen(1);
-            }
-
-            gfxFlushBuffers();
-            gfxSwapBuffers();
-            gspWaitForVBlank();
-        }
-        // Cleanup
-        gfxExit();
-        return;
-    } else if(menu == 1){
-        printf("Press A to continue to single-player mode.\nPress B to continue to multiplayer mode.\nPress START to go back.\n");
-
-        // Main loop
-        while (aptMainLoop()) {
-            hidScanInput();
-
-            // Exit on START button
-            u32 kDown = hidKeysDown();
-            if (kDown & KEY_START) break;
-
-            if (kDown & KEY_START) {
-                changeScreen(0);
-            }
-
-            if (kDown & KEY_A) {
-                changeScreen(2);
-            }
-
-            if(kDown & KEY_B) {
-                // Placeholder for multiplayer mode
-                changeScreen(3);
-            }
-
-            gfxFlushBuffers();
-            gfxSwapBuffers();
-            gspWaitForVBlank();
-        }
-        // Cleanup
-        gfxExit();
-        return;
-    } else if(menu == 2){
-        printf("\nSingle-player Mode Loaded! Press START to go back.\n");
-
-        // Main loop
-        while (aptMainLoop()) {
-            hidScanInput();
-
-            // Exit on START button
-            u32 kDown = hidKeysDown();
-            if (kDown & KEY_START) break;
-
-            if (kDown & KEY_START) {
-                changeScreen(0);
-            }
-
-            gfxFlushBuffers();
-            gfxSwapBuffers();
-            gspWaitForVBlank();
-        }
-        // Cleanup
-        gfxExit();
-        return;
+    consoleClear();
+    if (menu == 0) {
+        printf("\nWelcome! Please review the info on this screen:\n\n"
+               "Fairchild 'Hockey' (3DS Edition)\nVersion: 0.0.1\n\n"
+               "Press A to go to the main menu.\nPress START to exit.\n\n");
+    } else if (menu == 1) {
+        printf("Main Menu:\n"
+               "A = Single-player\n"
+               "B = Multi-player (stub)\n"
+               "START = Go back\n");
+    } else if (menu == 2) {
+        printf("\nSingle-player Mode Loaded!\nPress START to go back.\n");
+    } else if (menu == 3) {
+        printf("\nMulti-player Mode (not implemented).\nPress START to go back.\n");
     }
 }
 
 void resetScreen() {
-    gfxExit();
-    gfxInitDefault();
-    consoleInit(GFX_BOTTOM, NULL);
-} 
+    consoleClear();
+}
 
 void changeScreen(int menu) {
     resetScreen();
@@ -120,33 +47,77 @@ void changeScreen(int menu) {
 }
 
 int main(int argc, char** argv) {
-    // Initialize services
+    // Init graphics + console
     gfxInitDefault();
-
-    // Initialize console on top screen
     consoleInit(GFX_BOTTOM, NULL);
 
-    // Print message
-    printf("\nWelcome! Please review the info on this screen:\n\n\n\nGame: Channel Fun 'Hockey' (3DS Edition)\nVersion: 0.0.1 Alpha\n\nPress A to start.\nPress START to exit.\n\n");
+    C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
+    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    C2D_Prepare();
 
-    // Main loop
+    // Top screen target
+    top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+
+    // Start on welcome screen
+    loadMenu(0);
+    int currentMenu = 0;
+
     while (aptMainLoop()) {
         hidScanInput();
-
-        // Exit on START button
         u32 kDown = hidKeysDown();
+
         if (kDown & KEY_START) break;
 
-        if (kDown & KEY_A) {
-            changeScreen(1);
+        // Handle menu logic
+        if (currentMenu == 0) {
+            if (kDown & KEY_A) {
+                currentMenu = 1;
+                changeScreen(currentMenu);
+            }
+        } else if (currentMenu == 1) {
+            if (kDown & KEY_A) {
+                currentMenu = 2;
+                changeScreen(currentMenu);
+            } else if (kDown & KEY_B) {
+                currentMenu = 3;
+                changeScreen(currentMenu);
+            } else if (kDown & KEY_START) {
+                currentMenu = 0;
+                changeScreen(currentMenu);
+            }
+        } else if (currentMenu == 2 || currentMenu == 3) {
+            if (kDown & KEY_START) {
+                currentMenu = 0;
+                changeScreen(currentMenu);
+            }
         }
 
-        gfxFlushBuffers();
-        gfxSwapBuffers();
-        gspWaitForVBlank();
+        // ---- TOP SCREEN GRAPHICS ----
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        C2D_TargetClear(top, C2D_Color32(0, 0, 0, 255));
+        C2D_SceneBegin(top);
+
+        if (currentMenu == 0) {
+            // Draw a background rectangle on welcome
+            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
+        } else if (currentMenu == 1) {
+            // Draw a background rectangle on welcome
+            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
+        } else if (currentMenu == 2) {
+            // Draw a background rectangle on welcome
+            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
+        } else if (currentMenu == 3) {
+            // Draw a background rectangle on welcome
+            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
+        }
+
+        C3D_FrameEnd(0);
     }
 
     // Cleanup
+    C2D_Fini();
+    C3D_Fini();
     gfxExit();
     return 0;
 }
