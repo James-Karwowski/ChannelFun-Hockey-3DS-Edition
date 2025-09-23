@@ -1,0 +1,3 @@
+# Ignore all .3dsx and .elf files
+*.3dsx
+*.elf
