@@ -39,6 +39,8 @@ void changeScreen(int menu);
 void loadMenu(int menu);
 void loadAssets(int menu, float player1X, float player1Y, float player2X, float player2Y, float goalie1X, float goalie1Y, float goalie2X, float goalie2Y, float puckX, float puckY);
 void resetScreen();
+void loadPlayerAssets(float player1X, float player1Y, float player2X, float player2Y, float goalie1X, float goalie1Y, float goalie2X, float goalie2Y, u32 player1Color, u32 player2Color);
+void loadPuckAssets(float puckX, float puckY, float puckSizeX, float puckSizeY, u32 puckColor);
 
 int main(int argc, char** argv) {
     // Init graphics + console
@@ -66,27 +68,19 @@ int main(int argc, char** argv) {
         // Handle menu logic
         if (currentMenu == 0) {
             if (kDown & KEY_A) {
-                currentMenu = 1;
-                changeScreen(currentMenu);
-            }
-        } else if (currentMenu == 1) {
-            if (kDown & KEY_A) {
                 currentMenu = 2;
                 changeScreen(currentMenu);
             } else if (kDown & KEY_B) {
                 currentMenu = 3;
                 changeScreen(currentMenu);
-            } else if (kDown & KEY_START) {
-                currentMenu = 0;
-                changeScreen(currentMenu);
             }
         } else if (currentMenu == 2) {
-            if (kDown & KEY_START) {
+            if (kDown & KEY_X) {
                 currentMenu = 0;
                 changeScreen(currentMenu);
             }
         } else if (currentMenu == 3) {
-            if (kDown & KEY_START) {
+            if (kDown & KEY_X) {
                 currentMenu = 0;
                 changeScreen(currentMenu);
             }
@@ -139,12 +133,13 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
         C2D_DrawRectSolid(goalie2X, goalie2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
 
         C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 255, 255, 255)); // Puck (White)
-        while(!(kDown & KEY_START)) {
+        while(!(kDown & KEY_X)) {
             if(hitCollision == false){
                 puckX += 5.0f;
                 if(((player1X + 20) > puckX && player1X < (puckX + 10)) && ((player1Y + 20) > puckY && player1Y < (puckY + 10)) || ((goalie1X + 20) > puckX && goalie1X < (puckX + 10)) && ((goalie1Y + 20) > puckY && goalie1Y < (puckY + 10)) || ((goalie2X + 20) > puckX && goalie2X < (puckX + 10)) && ((goalie2Y + 20) > puckY && goalie2Y < (puckY + 10)) || ((player2X + 20) > puckX && player2X < (puckX + 10)) && ((player2Y + 20) > puckY && player2Y < (puckY + 10))){
                     hitCollision = true;
                     puckX += 5.0f * puckAcceleration;
+                    collisionCnt++;
                 }
             }
             hidScanInput();
@@ -170,6 +165,7 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
 
             if((((player1X + 20) > puckX && player1X < (puckX + 10)) && ((player1Y + 20) > puckY && player1Y < (puckY + 10)) || ((goalie1X + 20) > puckX && goalie1X < (puckX + 10)) && ((goalie1Y + 20) > puckY && goalie1Y < (puckY + 10)) || ((goalie2X + 20) > puckX && goalie2X < (puckX + 10)) && ((goalie2Y + 20) > puckY && goalie2Y < (puckY + 10)) || ((player2X + 20) > puckX && player2X < (puckX + 10)) && ((player2Y + 20) > puckY && player2Y < (puckY + 10)))){
                 hitCollision = true;
+                collisionCnt++;
                 puckX += 5.0f * puckAcceleration;
                 puckY += 5.0f * puckAcceleration;
                 puckAcceleration += 0.25f; // Increase acceleration each time the puck is hitcollision = true;
@@ -177,15 +173,17 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
         }
     }else if (menu == 3) {
         // Draw players and puck
+        //loadPlayerAssets(player1X, player1Y, player2X, player2Y, goalie1X, goalie1Y, goalie2X, goalie2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255), C2D_Color32(0, 0, 255, 255));
+        /*
         C2D_DrawRectSolid(player1X, player1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
         C2D_DrawRectSolid(player2X, player2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
 
         C2D_DrawRectSolid(goalie1X, goalie1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
         C2D_DrawRectSolid(goalie2X, goalie2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
-
+        */
         C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 255, 255, 255)); // Puck (White)
 
-        while(!(kDown & KEY_START)) {
+        while(!(kDown & KEY_X)) {
             hidScanInput();
             u32 kDown = hidKeysDown();
             if (kDown & KEY_CPAD_UP) {
@@ -212,12 +210,13 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
             if(kDown & KEY_DRIGHT) {
                 player2X += 5.0f;
             }
-            if(kDown & KEY_START){
-                loadMenu(1);
+            if(kDown & KEY_X){
+                loadMenu(0);
             }
 
             if((((player1X + 20) > puckX && player1X < (puckX + 10)) && ((player1Y + 20) > puckY && player1Y < (puckY + 10)) || ((goalie1X + 20) > puckX && goalie1X < (puckX + 10)) && ((goalie1Y + 20) > puckY && goalie1Y < (puckY + 10)) || ((goalie2X + 20) > puckX && goalie2X < (puckX + 10)) && ((goalie2Y + 20) > puckY && goalie2Y < (puckY + 10)) || ((player2X + 20) > puckX && player2X < (puckX + 10)) && ((player2Y + 20) > puckY && player2Y < (puckY + 10)))){
                 hitCollision = true;
+                collisionCnt++;
                 puckX += 5.0f * puckAcceleration;
                 puckY += 5.0f * puckAcceleration;
                 puckAcceleration += 0.25f; // Increase acceleration each time the puck is hitcollision = true;
@@ -230,18 +229,18 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
 void loadMenu(int menu) {
     consoleClear();
     if (menu == 0) {
-        printf("\nWelcome! Please review the info on this screen:\n\n"
-               "Fairchild 'Hockey' (3DS Edition)\nVersion: 0.0.1\n\n"
-               "Press A to go to the main menu.\nPress START to exit.\n\n");
+        printf("\nWelcome!\n\n"
+               "Fairchild 'Hockey' (3DS Edition)\nVersion: 0.0.2\n\n"
+               "Press A to begin Single-player Mode.\nPress B for Multi-player Mode.\nPress START to exit.\n\n");
     } else if (menu == 1) {
-        printf("Main Menu:\n"
+        printf("!DEBUG!\nMain Menu:\n"
                "A = Single-player\n"
                "B = Multi-player (stub)\n"
                "START = Go back\n");
     } else if (menu == 2) {
-        printf("\nSingle-player Mode Loaded!\nPress START to go back.\n");
+        printf("\nSingle-player Mode Loaded!\nPress X to go back.\n");
     } else if (menu == 3) {
-        printf("\nMulti-player Mode (not implemented).\nPress START to go back.\n");
+        printf("\nMulti-player Mode (not implemented).\nPress X to go back.\n");
     }
 }
 
@@ -252,6 +251,18 @@ void resetScreen() {
 void changeScreen(int menu) {
     resetScreen();
     C2D_TargetClear(top, C2D_Color32(0, 0, 0, 255));
-    //C2D_SceneBegin(top);
+    C2D_SceneBegin(top);
     loadMenu(menu);
+}
+
+void loadPlayerAssets(float player1X, float player1Y, float player2X, float player2Y, float goalie1X, float goalie1Y, float goalie2X, float goalie2Y, u32 player1Color, u32 player2Color){
+    C2D_DrawRectSolid(player1X, player1Y, 0.0f, 40.0f, 20.0f, player1Color); // Player 1
+    C2D_DrawRectSolid(player2X, player2Y, 0.0f, 40.0f, 20.0f, player2Color); // Player 2
+
+    C2D_DrawRectSolid(goalie1X, goalie1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
+    C2D_DrawRectSolid(goalie2X, goalie2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
+}
+
+void loadPuckAssets(float puckX, float puckY, float puckSizeX, float puckSizeY, u32 puckColor){
+    C2D_DrawRectSolid(puckX, puckY, 0.0f, puckSizeX, puckSizeY, puckColor);
 }
