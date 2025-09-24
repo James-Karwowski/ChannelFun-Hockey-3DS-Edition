@@ -5,6 +5,14 @@
 #include <citro2d.h>
 #include <citro3d.h>
 #include <stdio.h>
+#include <time.h>
+
+/*
+static struct timespec puckAccelerationDelay = {
+    .tv_sec = 0,
+    .tv_nsec = 500000000 // 500 million nanoseconds (0.5 seconds)
+};
+*/
 
 // citro2d targets
 static C3D_RenderTarget* top;
@@ -12,14 +20,19 @@ static C3D_RenderTarget* bottom;
 
 static float def1X = 180.0f;
 static float def1Y = 100.0f;
+
 static float def2X = 180.0f;
 static float def2Y = 50.0f;
+
 static float defG1X = 50.0f;
 static float defG1Y = 50.0f;
+
 static float defG2X = 50.0f;
 static float defG2Y = 50.0f;
+
 static float puckX = 200.0f;
 static float puckY = 120.0f;
+static float puckAcceleration = 1.0f;
 
 // Forward declarations
 void changeScreen(int menu);
@@ -114,6 +127,8 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
     // Placeholder for graphics assets depending on menu
     //(void)menu;
     u32 kDown = hidKeysDown();
+    int collisionCnt = 0;
+    bool hitCollision = false;
 
     if(menu == 2) {
         // Draw players and puck        
@@ -124,8 +139,14 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
         C2D_DrawRectSolid(goalie2X, goalie2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
 
         C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 255, 255, 255)); // Puck (White)
-
         while(!(kDown & KEY_START)) {
+            if(hitCollision == false){
+                puckX += 5.0f;
+                if(((player1X + 20) > puckX && player1X < (puckX + 10)) && ((player1Y + 20) > puckY && player1Y < (puckY + 10)) || ((goalie1X + 20) > puckX && goalie1X < (puckX + 10)) && ((goalie1Y + 20) > puckY && goalie1Y < (puckY + 10)) || ((goalie2X + 20) > puckX && goalie2X < (puckX + 10)) && ((goalie2Y + 20) > puckY && goalie2Y < (puckY + 10)) || ((player2X + 20) > puckX && player2X < (puckX + 10)) && ((player2Y + 20) > puckY && player2Y < (puckY + 10))){
+                    hitCollision = true;
+                    puckX += 5.0f * puckAcceleration;
+                }
+            }
             hidScanInput();
             u32 kDown = hidKeysDown();
             if (kDown & KEY_CPAD_UP) {
@@ -145,6 +166,13 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
             }
             if (kDown & KEY_R) {
                 goalie1Y += 5.0f;
+            }
+
+            if((((player1X + 20) > puckX && player1X < (puckX + 10)) && ((player1Y + 20) > puckY && player1Y < (puckY + 10)) || ((goalie1X + 20) > puckX && goalie1X < (puckX + 10)) && ((goalie1Y + 20) > puckY && goalie1Y < (puckY + 10)) || ((goalie2X + 20) > puckX && goalie2X < (puckX + 10)) && ((goalie2Y + 20) > puckY && goalie2Y < (puckY + 10)) || ((player2X + 20) > puckX && player2X < (puckX + 10)) && ((player2Y + 20) > puckY && player2Y < (puckY + 10)))){
+                hitCollision = true;
+                puckX += 5.0f * puckAcceleration;
+                puckY += 5.0f * puckAcceleration;
+                puckAcceleration += 0.25f; // Increase acceleration each time the puck is hitcollision = true;
             }
         }
     }else if (menu == 3) {
@@ -186,6 +214,13 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
             }
             if(kDown & KEY_START){
                 loadMenu(1);
+            }
+
+            if((((player1X + 20) > puckX && player1X < (puckX + 10)) && ((player1Y + 20) > puckY && player1Y < (puckY + 10)) || ((goalie1X + 20) > puckX && goalie1X < (puckX + 10)) && ((goalie1Y + 20) > puckY && goalie1Y < (puckY + 10)) || ((goalie2X + 20) > puckX && goalie2X < (puckX + 10)) && ((goalie2Y + 20) > puckY && goalie2Y < (puckY + 10)) || ((player2X + 20) > puckX && player2X < (puckX + 10)) && ((player2Y + 20) > puckY && player2Y < (puckY + 10)))){
+                hitCollision = true;
+                puckX += 5.0f * puckAcceleration;
+                puckY += 5.0f * puckAcceleration;
+                puckAcceleration += 0.25f; // Increase acceleration each time the puck is hitcollision = true;
             }
         }
     }
