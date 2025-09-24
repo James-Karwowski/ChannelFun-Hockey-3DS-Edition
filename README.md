@@ -7,7 +7,7 @@ Channel Fun 'Hockey' (3DS Edition) is a port of the original game from the Fairc
 
 Channel Fun 'Hockey' (3DS Edition) is not in a playable state at the moment, however, when it is playable I will add the release version of the game to the top.
 
-# Questions
+# Q&A
 # Why Though?
 The purpose of this project was so that I can introduce myself to the general idea of game development without using a game engine.
 
