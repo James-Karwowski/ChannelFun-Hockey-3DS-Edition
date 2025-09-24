@@ -17,7 +17,7 @@ At the moment, the game is still a work-in-progress, and it requires a lot of de
 As of the creation of this repository, I am a first-year CS Major at the University of North Carolina at Charlotte with the status of junior. I am planning on having a concentration in Cyber Security.
 
 # How can I play?
-To play Channel Fun 'Hockey', you will need to get an original 3DS (or newer) with CFW (Custom Firmware). From there, download the .3dsx file above and send it to the appropriate folder in your SD card. After that, it should be available to for you to play. Enjoy!
+To play Channel Fun 'Hockey', you will need to get an original 3DS (or newer) with CFW (Custom Firmware). From there, download the .3dsx file above and send it to the appropriate /3ds/ folder on your SD card. After that, it should be available to for you to play. Enjoy!
 
 # Where's Singleplayer mode?
 Singleplayer mode is still a WIP. Sorry!
