@@ -90,9 +90,11 @@ int main(int argc, char** argv) {
         } else if (currentMenu == 2) {
             // Draw a background rectangle on welcome
             changeScreen(2);
+            loadAssets(2, def1X, def1Y, def2X, def2Y, defG1X, defG1Y, defG2X, defG2Y, puckX, puckY);
         } else if (currentMenu == 3) {
             // Draw a background rectangle on welcome
             changeScreen(3);
+            loadAssets(3, def1X, def1Y, def2X, def2Y, defG1X, defG1Y, defG2X, defG2Y, puckX, puckY);
         }
 
         C3D_FrameEnd(0);
@@ -120,7 +122,7 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
 
         C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 255, 255, 255)); // Puck (White)
 
-        while((kDown & KEY_START)) {
+        while(!(kDown & KEY_START)) {
             hidScanInput();
             u32 kDown = hidKeysDown();
             if (kDown & KEY_CPAD_UP) {
@@ -142,7 +144,6 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
                 goalie1Y += 5.0f;
             }
         }
-        
     }else if (menu == 3) {
         // Draw players and puck
         C2D_DrawRectSolid(player1X, player1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
@@ -153,7 +154,7 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
 
         C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 255, 255, 255)); // Puck (White)
 
-        while((kDown & KEY_START)) {
+        while(!(kDown & KEY_START)) {
             hidScanInput();
             u32 kDown = hidKeysDown();
             if (kDown & KEY_CPAD_UP) {
@@ -184,7 +185,6 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
                 loadMenu(1);
             }
         }
-        
     }
     return;
 }
