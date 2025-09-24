@@ -3,10 +3,25 @@
 #include <citro3d.h>
 #include <stdio.h>
 
+// citro2d targets
+static C3D_RenderTarget* top;
+static C3D_RenderTarget* bottom;
+
+static float def1X = 180.0f;
+static float def1Y = 100.0f;
+static float def2X = 180.0f;
+static float def2Y = 50.0f;
+static float defG1X = 50.0f;
+static float defG1Y = 50.0f;
+static float defG2X = 50.0f;
+static float defG2Y = 50.0f;
+static float puckX = 200.0f;
+static float puckY = 120.0f;
+
 // Forward declarations
 void changeScreen(int menu);
 void loadMenu(int menu);
-void loadAssets(int menu);
+void loadAssets(int menu, float player1X, float player1Y, float player2X, float player2Y, float goalie1X, float goalie1Y, float goalie2X, float goalie2Y, float puckX, float puckY);
 void resetScreen();
 
 int main(int argc, char** argv) {
@@ -71,15 +86,13 @@ int main(int argc, char** argv) {
             C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
         } else if (currentMenu == 1) {
             // Draw a background rectangle on welcome
-            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
+            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 150, 93, 255));
         } else if (currentMenu == 2) {
             // Draw a background rectangle on welcome
-            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
-            loadAssets(2);
+            changeScreen(2);
         } else if (currentMenu == 3) {
             // Draw a background rectangle on welcome
-            C2D_DrawRectSolid(0.0f, 30.0f, 0.0f, 400.0f, 240.f, C2D_Color32(83, 100, 93, 255));
-            loadAssets(3);
+            changeScreen(3);
         }
 
         C3D_FrameEnd(0);
@@ -92,30 +105,26 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// citro2d targets
-static C3D_RenderTarget* top;
-static C3D_RenderTarget* bottom;
-static font_s* bitcountFont = fontOpen("../fonts/Bitcount-Medium.bcfnt.lz");
-
-void loadAssets(int menu, float player1X, float player1Y, float player2X, float player2Y, float puckX, float puckY) {
+void loadAssets(int menu, float player1X, float player1Y, float player2X, float player2Y, float goalie1X, float goalie1Y, float goalie2X, float goalie2Y, float puckX, float puckY) {
     // Placeholder for graphics assets depending on menu
     //(void)menu;
+    u32 kDown = hidKeysDown();
 
     if(menu == 2) {
-        // Draw players and puck
-        C2D_DrawRectSolid(player1X, player1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 255, 0, 255)); // Player 1 (Green)
+        // Draw players and puck        
+        C2D_DrawRectSolid(player1X, player1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
         C2D_DrawRectSolid(player2X, player2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
 
-        C2D_DrawRectSolid(goalie1X, goalie1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 255, 0, 255)); // Player 1 (Green)
+        C2D_DrawRectSolid(goalie1X, goalie1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
         C2D_DrawRectSolid(goalie2X, goalie2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
 
-        C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 0, 0, 255)); // Puck (Red)
+        C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 255, 255, 255)); // Puck (White)
 
-        while(!(kDown & KEY_START)) {
+        while((kDown & KEY_START)) {
             hidScanInput();
             u32 kDown = hidKeysDown();
             if (kDown & KEY_CPAD_UP) {
-            player1Y -= 5.0f;
+                player1Y -= 5.0f;
             }
             if (kDown & KEY_CPAD_DOWN) {
                 player1Y += 5.0f;
@@ -131,18 +140,20 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
             }
             if (kDown & KEY_R) {
                 goalie1Y += 5.0f;
+            }
         }
+        
     }else if (menu == 3) {
         // Draw players and puck
-        C2D_DrawRectSolid(player1X, player1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 255, 0, 255)); // Player 1 (Green)
+        C2D_DrawRectSolid(player1X, player1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
         C2D_DrawRectSolid(player2X, player2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
 
-        C2D_DrawRectSolid(goalie1X, player1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 255, 0, 255)); // Player 1 (Green)
-        C2D_DrawRectSolid(goalie2X, player2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
+        C2D_DrawRectSolid(goalie1X, goalie1Y, 0.0f, 40.0f, 20.0f, C2D_Color32(255, 0, 0, 255)); // Player 1 (Red)
+        C2D_DrawRectSolid(goalie2X, goalie2Y, 0.0f, 40.0f, 20.0f, C2D_Color32(0, 0, 255, 255)); // Player 2 (Blue)
 
-        C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 0, 0, 255)); // Puck (Red)
+        C2D_DrawRectSolid(puckX, puckY, 0.0f, 10.0f, 10.0f, C2D_Color32(255, 255, 255, 255)); // Puck (White)
 
-        while(!(kDown & KEY_START)) {
+        while((kDown & KEY_START)) {
             hidScanInput();
             u32 kDown = hidKeysDown();
             if (kDown & KEY_CPAD_UP) {
@@ -157,19 +168,23 @@ void loadAssets(int menu, float player1X, float player1Y, float player2X, float 
             if(kDown & KEY_CPAD_RIGHT) {
                 player1X += 5.0f;
             }
-            if (kDown & KEY_DPAD_UP) {
+            if (kDown & KEY_DUP) {
                 player2Y -= 5.0f;
             }
-            if (kDown & KEY_DPAD_DOWN) {
+            if (kDown & KEY_DDOWN) {
                 player2Y += 5.0f;
             }
-            if(kDown & KEY_DPAD_LEFT) {
+            if(kDown & KEY_DLEFT) {
                 player2X -= 5.0f;
             }
-            if(kDown & KEY_DPAD_RIGHT) {
+            if(kDown & KEY_DRIGHT) {
                 player2X += 5.0f;
             }
+            if(kDown & KEY_START){
+                loadMenu(1);
+            }
         }
+        
     }
     return;
 }
@@ -198,6 +213,7 @@ void resetScreen() {
 
 void changeScreen(int menu) {
     resetScreen();
+    C2D_TargetClear(top, C2D_Color32(0, 0, 0, 255));
+    //C2D_SceneBegin(top);
     loadMenu(menu);
-    loadAssets(menu);
 }
