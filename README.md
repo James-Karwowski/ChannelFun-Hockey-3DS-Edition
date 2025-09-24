@@ -1,5 +1,5 @@
 # Channel F 'Hockey' (3DS Edition)
-A Nintendo 3DS Homebrew port of the Fairchild Channel F video game "Hockey".
+A Nintendo 3DS Homebrew version of the Fairchild Channel F video game "Hockey".
 
 "Hockey" is a clone of the classic game "Pong" which uses the typical main paddle and introduces a second paddle that acts like a goalie. The main paddle has some unique mechanics in "Hockey" which include 2D movement (rather than just one-axis movement) and center-pivot rotation.
 
