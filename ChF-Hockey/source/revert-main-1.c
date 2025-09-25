@@ -1,3 +1,6 @@
+//If the amount of errors is 2, these are likely #include issues, but the program will still compile and run fine.
+//If the amount of errors is more than 2, these are likely syntax issues, and the program will not compile or run.
+
 #include <3ds.h>
 #include <citro2d.h>
 #include <stdio.h>

@@ -1,165 +1,372 @@
-//If the amount of errors is 2, these are likely #include issues, but the program will still compile and run fine.
-//If the amount of errors is more than 2, these are likely syntax issues, and the program will not compile or run.
+// main.c
+
+// Pong-style hockey demo with rotating paddles, puck physics, and rink borders.
+// Uses citro2d, citro3d, and libctru according to documentation.
+
+// Fairchild 'Hockey' (3DS Edition) - Go to https://github.com/James-Karwowski for more 3DS Homebrew projects!
+// This demo is inspired by the Channel F's 'Hockey' game with its unique twists such as rotating paddles and a secondary goalie paddle.
+
+// This code is completely open-source, free to use, and modify.
+// If you want to modify this project, you can change these constants to adjust gameplay.
+// If you need to add functions, structs, etc., please add separate .c/.h files and include them under "Mods" and above "End Mods".
+// If you want to add more features, feel free to do so!
+// Enjoy!
+
+
+
+// If the amount of errors is 2, these are likely #include issues, but the program will still compile and run fine.
+// I would make sure though.
+// If the amount of errors is more than 2, these are likely syntax issues, and the program will not compile or run properly.
 
 #include <3ds.h>
 #include <citro2d.h>
 #include <citro3d.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
-#include <stdbool.h>
 
-// Screen size
-#define SCREEN_WIDTH  400
-#define SCREEN_HEIGHT 240
+// Mods
 
-// Paddle
-float paddleX = SCREEN_WIDTH / 2;
-float paddleY = SCREEN_HEIGHT - 40;
-float paddleW = 80.0f;
-float paddleH = 16.0f;
-float paddleAngle = 0.0f;
+// End Mods
 
-// Puck
-float puckX = SCREEN_WIDTH / 2;
-float puckY = SCREEN_HEIGHT / 2;
-float puckVX = 0.0f;
-float puckVY = 2.0f;
-float puckRadius = 8.0f;
+// Screen constants
+#define SCREEN_W 400
+#define SCREEN_H 240
 
-// Goal size (bottom border opening)
-float goalWidth = 100.0f;
+// Rink
+#define RINK_W 400.0f
+#define RINK_H 180.0f
 
-// -------------------- Drawing --------------------
+// Gameplay geometry
+#define PUCK_SIZE 12.0f
+#define PADDLE_W 6.0f
+#define PADDLE_H 40.0f
 
-void drawPaddle(float x, float y, float angle) {
-    C2D_DrawRectSolid(
-        x - paddleW / 2, y - paddleH / 2, 0,
-        paddleW, paddleH,
-        C2D_Color32(200, 50, 50, 255),
-        angle, x, y   // rotation and pivot
-    );
+#define GOALIE_W 6.0f
+#define GOALIE_H 10.0f
+#define GOALIE_X 10.0f
+#define GOALIE_Y_LIMIT_TOP ((RINK_H * 0.5f) + 10.0f)
+#define GOALIE_Y_LIMIT_BOTTOM ((RINK_H * 0.5f) - 10.0f)
+
+// Speeds
+#define PUCK_SPEED_INIT 2.5f
+#define PUCK_SPEED_BOOST 1.08f
+#define PADDLE_SPEED 3.5f
+#define AI_SPEED 3.5f
+#define ROT_SPEED 0.05f
+
+typedef struct {
+    float x, y;
+    float angle; // radians
+} Paddle;
+
+typedef struct {
+    float x, y;
+    float vx, vy;
+    float size;
+} Puck;
+
+// Globals
+static C3D_RenderTarget* top_target;
+static C3D_RenderTarget* bot_target;
+
+static Paddle left_paddle;
+static Paddle right_paddle;
+
+static Paddle left_goalie;
+static Paddle right_goalie;
+
+static Puck puck;
+
+// Scores
+static int left_score = 0;
+static int right_score = 0;
+
+// Reset puck to center, moving toward right
+static void reset_puck(void) {
+    puck.size = PUCK_SIZE;
+    puck.x = (SCREEN_W - puck.size) * 0.5f;
+    puck.y = (SCREEN_H - puck.size) * 0.5f;
+    float ang = ((rand() % 60) - 30) * (M_PI / 180.0f);
+    puck.vx = cosf(ang) * PUCK_SPEED_INIT;
+    puck.vy = sinf(ang) * PUCK_SPEED_INIT;
+    if (puck.vx < 0) puck.vx = -puck.vx; // ensure toward right
 }
 
-void drawPuck(float x, float y) {
-    C2D_DrawCircleSolid(x, y, 0, puckRadius, C2D_Color32(50, 200, 50, 255));
+// Init game objects
+static void init_game(void) {
+    left_paddle.x = 40;
+    left_paddle.y = SCREEN_H * 0.5f;
+    left_paddle.angle = 0;
+
+    right_paddle.x = SCREEN_W - 40;
+    right_paddle.y = SCREEN_H * 0.5f;
+    right_paddle.angle = 0;
+
+    left_goalie.x = GOALIE_X;
+    left_goalie.y = SCREEN_H * 0.5f;
+
+    right_goalie.x = SCREEN_W - GOALIE_X;
+    right_goalie.y = SCREEN_H * 0.5f;
+
+    reset_puck();
 }
 
-void drawBorder() {
-    u32 borderColor = C2D_Color32(255, 255, 255, 255);
-    float thickness = 4.0f;
+// Draw paddle as a thick line (rotatable)
+static void drawPaddle(Paddle *p, u32 color) {
+    float halfLen = PADDLE_W / 2.0f;
+    float cosA = cosf(p->angle);
+    float sinA = sinf(p->angle);
 
-    // Top border
-    C2D_DrawRectSolid(0, 0, 0, SCREEN_WIDTH, thickness, borderColor);
+    float x1 = p->x - halfLen * cosA;
+    float y1 = p->y - halfLen * sinA;
+    float x2 = p->x + halfLen * cosA;
+    float y2 = p->y + halfLen * sinA;
 
-    // Left border
-    C2D_DrawRectSolid(0, 0, 0, thickness, SCREEN_HEIGHT, borderColor);
-
-    // Right border
-    C2D_DrawRectSolid(SCREEN_WIDTH - thickness, 0, 0, thickness, SCREEN_HEIGHT, borderColor);
-
-    // Bottom border with goal opening
-    float goalX = (SCREEN_WIDTH - goalWidth) / 2;
-    C2D_DrawRectSolid(0, SCREEN_HEIGHT - thickness, 0, goalX, thickness, borderColor);
-    C2D_DrawRectSolid(goalX + goalWidth, SCREEN_HEIGHT - thickness, 0, SCREEN_WIDTH - (goalX + goalWidth), thickness, borderColor);
+    C2D_DrawLine(x1, y1, color, x2, y2, color, PADDLE_H, 0);
 }
 
-// -------------------- Game Logic --------------------
+static void drawGoalie(Paddle *p, u32 color) {
+    float halfLen = GOALIE_W / 2.0f;
+    float cosA = cosf(p->angle);
+    float sinA = sinf(p->angle);
 
-void updatePaddle() {
-    hidScanInput();
-    circlePosition circle;
-    hidCircleRead(&circle);
+    float x1 = p->x - halfLen * cosA;
+    float y1 = p->y - halfLen * sinA;
+    float x2 = p->x + halfLen * cosA;
+    float y2 = p->y + halfLen * sinA;
 
-    paddleX += circle.dx * 0.05f;
-    paddleY += circle.dy * 0.05f;
-
-    u32 kHeld = hidKeysHeld();
-    if (kHeld & KEY_L) paddleAngle -= 0.05f;
-    if (kHeld & KEY_R) paddleAngle += 0.05f;
-
-    // Clamp
-    if (paddleX < paddleW/2) paddleX = paddleW/2;
-    if (paddleX > SCREEN_WIDTH - paddleW/2) paddleX = SCREEN_WIDTH - paddleW/2;
-    if (paddleY < paddleH/2) paddleY = paddleH/2;
-    if (paddleY > SCREEN_HEIGHT - paddleH/2) paddleY = SCREEN_HEIGHT - paddleH/2;
+    C2D_DrawLine(x1, y1, color, x2, y2, color, GOALIE_H, 0);
 }
 
-void updatePuck() {
-    puckX += puckVX;
-    puckY += puckVY;
+// Handle paddle-puck collision (reflect using paddle angle)
+static void handlePaddleCollision(Paddle *p) {
+    float dx = puck.x + puck.size/2 - p->x;
+    float dy = puck.y + puck.size/2 - p->y;
+    float dist = sqrtf(dx*dx + dy*dy);
 
-    // Left/right wall
-    if (puckX - puckRadius < 0 || puckX + puckRadius > SCREEN_WIDTH) puckVX = -puckVX;
+    if (dist < (PADDLE_H/2 + puck.size/2)) {
+        // reflect puck based on paddle angle
+        float nx = cosf(p->angle);
+        float ny = sinf(p->angle);
 
-    // Top wall
-    if (puckY - puckRadius < 0) puckVY = -puckVY;
+        float dot = puck.vx*nx + puck.vy*ny;
+        puck.vx -= 2*dot*nx;
+        puck.vy -= 2*dot*ny;
 
-    // Bottom border (goal opening in middle)
-    float goalX = (SCREEN_WIDTH - goalWidth) / 2;
-    if (puckY + puckRadius > SCREEN_HEIGHT) {
-        if (puckX < goalX || puckX > goalX + goalWidth) {
-            puckVY = -fabs(puckVY); // bounce back
-            puckY = SCREEN_HEIGHT - puckRadius - 1;
+        puck.vx *= PUCK_SPEED_BOOST;
+        puck.vy *= PUCK_SPEED_BOOST;
+    }
+
+    if(dist < (GOALIE_H/2 + puck.size/2)) {
+        // reflect puck based on paddle angle
+        float nx = cosf(p->angle);
+        float ny = sinf(p->angle);
+
+        float dot = puck.vx*nx + puck.vy*ny;
+        puck.vx -= 2*dot*nx;
+        puck.vy -= 2*dot*ny;
+
+        puck.vx *= PUCK_SPEED_BOOST;
+        puck.vy *= PUCK_SPEED_BOOST;
+    }
+}
+
+// Update puck (walls + paddles + goals)
+static void update_puck(void) {
+    puck.x += puck.vx;
+    puck.y += puck.vy;
+
+    float rink_top = (SCREEN_H - RINK_H) * 0.5f;
+    float rink_bottom = rink_top + RINK_H;
+    float rink_left = (SCREEN_W - RINK_W) * 0.5f;
+    float rink_right = rink_left + RINK_W;
+
+    // Bounce off top/bottom
+    if (puck.y < rink_top) { puck.y = rink_top; puck.vy = -puck.vy; }
+    if (puck.y + puck.size > rink_bottom) { puck.y = rink_bottom - puck.size; puck.vy = -puck.vy; }
+
+    // Goal detection
+    float goal_gap = 60;
+    float gap_y = (SCREEN_H - goal_gap) * 0.5f;
+
+    if (puck.x < rink_left) {
+        if (puck.y > gap_y && puck.y + puck.size < gap_y + goal_gap) {
+            // Goal for right player
+            right_score++;
+            reset_puck();
+            return;
         } else {
-            // GOAL scored
-            puckX = SCREEN_WIDTH / 2;
-            puckY = SCREEN_HEIGHT / 2;
-            puckVX = 0;
-            puckVY = 2;
+            puck.x = rink_left;
+            puck.vx = -puck.vx;
         }
     }
+    if (puck.x + puck.size > rink_right) {
+        if (puck.y > gap_y && puck.y + puck.size < gap_y + goal_gap) {
+            // Goal for left player
+            left_score++;
+            reset_puck();
+            return;
+        } else {
+            puck.x = rink_right - puck.size;
+            puck.vx = -puck.vx;
+        }
+    }
+
+    // Paddle collisions
+    handlePaddleCollision(&left_paddle);
+    handlePaddleCollision(&right_paddle);
 }
 
-void checkPaddleCollision() {
-    if (puckX > paddleX - paddleW/2 && puckX < paddleX + paddleW/2 &&
-        puckY + puckRadius > paddleY - paddleH/2 && puckY - puckRadius < paddleY + paddleH/2) {
+// Clamp paddle inside rink
+static void clamp_paddle(Paddle *p) {
+    float rink_top = (SCREEN_H - RINK_H) * 0.5f;
+    float rink_bottom = rink_top + RINK_H;
 
-        // Transform puck velocity into paddle local space
-        float cosA = cosf(-paddleAngle);
-        float sinA = sinf(-paddleAngle);
+    // Keep paddle center within borders, accounting for paddle half-height
+    float halfLen = PADDLE_H / 2.0f;
+    if (p->y - halfLen < rink_top) p->y = rink_top + halfLen;
+    if (p->y + halfLen > rink_bottom) p->y = rink_bottom - halfLen;
+}
 
-        float localVX = puckVX * cosA - puckVY * sinA;
-        float localVY = puckVX * sinA + puckVY * cosA;
+// Clamp paddle inside rink
+static void clamp_goalie(Paddle *p) {
+    float rink_top = (SCREEN_H - RINK_H) * 0.5f;
+    float rink_bottom = rink_top + RINK_H;
 
-        localVY = -fabs(localVY); // bounce upwards relative to paddle
+    // Keep paddle center within borders, accounting for paddle half-height
+    float halfLen = GOALIE_H / 2.0f;
+    if (p->y - halfLen < rink_top) p->y = rink_top + halfLen;
+    if (p->y + halfLen > rink_bottom) p->y = rink_bottom - halfLen;
+}
 
-        puckVX = localVX * cosf(paddleAngle) - localVY * sinf(paddleAngle);
-        puckVY = localVX * sinf(paddleAngle) + localVY * cosf(paddleAngle);
+// Simple AI
+static void update_ai(void) {
+    if (fabsf(puck.y - left_paddle.y) > 2.0f) {
+        if (puck.y < left_paddle.y) left_paddle.y -= AI_SPEED;
+        else left_paddle.y += AI_SPEED;
+        
+    }
+    if(fabsf(puck.x - left_paddle.x) < 25.0f) {
+        if (puck.x < left_paddle.x) left_paddle.x += AI_SPEED;
+        else{
+            left_paddle.x -= AI_SPEED;
+            if(left_paddle.x < 40) left_paddle.x = 40;
+            if(left_paddle.x > SCREEN_W/2) left_paddle.x = SCREEN_W/2;
+        }
+    }
+    clamp_paddle(&left_paddle);
+}
 
-        puckY = paddleY - paddleH/2 - puckRadius - 1;
+// Draw rink + objects
+static void draw_scene(void) {
+    float rink_x = (SCREEN_W - RINK_W) * 0.5f;
+    float rink_y = (SCREEN_H - RINK_H) * 0.5f;
+
+    // Rink background
+    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, RINK_H, C2D_Color32(161,191,188,255));
+
+
+    // Top/bottom borders
+    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, 4, C2D_Color32(0,0,0,255));
+    C2D_DrawRectSolid(rink_x, rink_y + RINK_H - 4, 0, RINK_W, 4, C2D_Color32(0,0,0,255));
+
+    // Goal posts
+    float goal_gap = 60;
+    float gap_y = (SCREEN_H - goal_gap) * 0.5f;
+    C2D_DrawRectSolid(rink_x, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(0,0,0,255));
+    C2D_DrawRectSolid(rink_x, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(0,0,0,255));
+    C2D_DrawRectSolid(rink_x + RINK_W - 4, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(0,0,0,255));
+    C2D_DrawRectSolid(rink_x + RINK_W - 4, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(0,0,0,255));
+
+    // Paddles
+    drawPaddle(&left_paddle, C2D_Color32(0,0,255,255));
+    drawPaddle(&right_paddle, C2D_Color32(0,255,0,255));
+
+    // Goalies
+    drawGoalie(&left_goalie, C2D_Color32(0,0,255,255));
+    drawGoalie(&right_goalie, C2D_Color32(0,255,0,255));
+
+    // Puck
+    C2D_DrawRectSolid(puck.x, puck.y, 0.2f, puck.size, puck.size, C2D_Color32(255,255,255,255));
+}
+
+static void reset_game(void) {
+    left_score = 0;
+    right_score = 0;
+    reset_puck();
+}
+
+static void pause(void) {
+    // Simple pause - wait for START again
+    while (1) {
+        hidScanInput();
+        u32 kDown = hidKeysDown();
+        if (kDown & KEY_B) break;
+        gspWaitForVBlank();
     }
 }
 
-// -------------------- Main --------------------
+int main(int argc, char** argv) {
+    srand((unsigned int)svcGetSystemTick());
 
-int main() {
-    // Init libs
     gfxInitDefault();
+    PrintConsole bottomScreen;
+    consoleInit(GFX_BOTTOM, &bottomScreen);
+
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
+    C2D_SceneSize(SCREEN_W, SCREEN_H, false);
 
-    // Create top screen render target
-    C3D_RenderTarget* top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    top_target = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    bot_target = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+
+    init_game();
 
     while (aptMainLoop()) {
         hidScanInput();
-        if (hidKeysDown() & KEY_START) break;
+        u32 kDown = hidKeysDown();
+        u32 kHeld = hidKeysHeld();
 
-        updatePaddle();
-        updatePuck();
-        checkPaddleCollision();
+        if (kDown & KEY_START) pause();
+        if (kDown & KEY_SELECT) reset_game();
+        if (kDown & KEY_B) pause();
 
+        // Circle Pad for right paddle
+        circlePosition cp;
+        hidCircleRead(&cp);
+        right_paddle.x += (float)cp.dx / 477.0f * AI_SPEED;
+        right_paddle.y -= (float)cp.dy / 477.0f * AI_SPEED;
+        clamp_paddle(&right_paddle);
+
+        if(kHeld & KEY_DUP) right_goalie.y -= PADDLE_SPEED * 1.25f;
+        if(kHeld & KEY_DDOWN) right_goalie.y += PADDLE_SPEED * 1.25f;
+        clamp_goalie(&right_goalie);
+
+        if (kHeld & KEY_L) right_paddle.angle -= ROT_SPEED;
+        if (kHeld & KEY_R) right_paddle.angle += ROT_SPEED;
+
+        if(right_paddle.x > SCREEN_W - 40) right_paddle.x = SCREEN_W - 40;
+        if(right_paddle.x < SCREEN_W/2) right_paddle.x = SCREEN_W/2;
+
+        update_ai();
+        update_puck();
+
+        // Draw top screen
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_TargetClear(top, C2D_Color32(0, 0, 0, 255));
-        C2D_SceneBegin(top);
-
-        drawBorder();
-        drawPaddle(paddleX, paddleY, paddleAngle);
-        drawPuck(puckX, puckY);
-
+        C2D_TargetClear(top_target, C2D_Color32(0,0,0,255));
+        C2D_SceneBegin(top_target);
+        draw_scene();
         C3D_FrameEnd(0);
+
+        // Draw bottom screen scores
+        consoleSelect(&bottomScreen);
+        consoleClear();
+        printf("Left Score: %d\n", left_score);
+        printf("Right Score: %d\n", right_score);
+
+        gspWaitForVBlank();
     }
 
     C2D_Fini();
