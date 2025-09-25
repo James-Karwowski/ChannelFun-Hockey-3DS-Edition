@@ -1,4 +1,4 @@
-DISCLAIMER: Channel Fun 'Hockey' (3DS Edition) is not in a playable state at the moment, however, when it is playable I will add the release version of the game below, and this disclaimer will be removed.
+DISCLAIMER: Channel F 'Hockey' (3DS Edition) is not in a playable state at the moment, however, when it is playable I will add the release version of the game below, and this disclaimer will be removed.
 # Channel F 'Hockey' (3DS Edition)
 A Nintendo 3DS Homebrew version of the Fairchild Channel F video game "Hockey".
 
