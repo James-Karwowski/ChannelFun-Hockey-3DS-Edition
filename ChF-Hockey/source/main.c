@@ -274,10 +274,10 @@ static void draw_scene(void) {
     // Goal posts
     float goal_gap = 60;
     float gap_y = (SCREEN_H - goal_gap) * 0.5f;
-    C2D_DrawRectSolid(rink_x, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(0,0,0,255));
-    C2D_DrawRectSolid(rink_x, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(0,0,0,255));
-    C2D_DrawRectSolid(rink_x + RINK_W - 4, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(0,0,0,255));
-    C2D_DrawRectSolid(rink_x + RINK_W - 4, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(0,0,0,255));
+    C2D_DrawRectSolid(rink_x, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(255,0,0,255));
+    C2D_DrawRectSolid(rink_x, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(255,0,0,255));
+    C2D_DrawRectSolid(rink_x + RINK_W - 4, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(255,0,0,255));
+    C2D_DrawRectSolid(rink_x + RINK_W - 4, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(255,0,0,255));
 
     // Paddles
     drawPaddle(&left_paddle, C2D_Color32(0,0,255,255));
@@ -288,7 +288,7 @@ static void draw_scene(void) {
     drawGoalie(&right_goalie, C2D_Color32(0,255,0,255));
 
     // Puck
-    C2D_DrawRectSolid(puck.x, puck.y, 0.2f, puck.size, puck.size, C2D_Color32(255,255,255,255));
+    C2D_DrawRectSolid(puck.x, puck.y, 0.2f, puck.size, puck.size, C2D_Color32(0,0,0,255));
 }
 
 static void reset_game(void) {
