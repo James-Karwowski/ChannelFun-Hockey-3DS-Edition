@@ -24,6 +24,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <malloc.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 // Mods
 
@@ -51,7 +57,8 @@
 // Speeds
 #define PUCK_SPEED_INIT 2.5f
 #define PUCK_SPEED_BOOST 1.08f
-#define PADDLE_SPEED 3.5f
+#define PUCK_SPEED_MAX 6.0f
+#define PADDLE_SPEED 7.0f
 #define AI_SPEED 3.5f
 #define ROT_SPEED 0.05f
 
@@ -82,8 +89,79 @@ static Puck puck;
 static int left_score = 0;
 static int right_score = 0;
 
+// Basic WAV header
+typedef struct {
+    char riff_magic[4];
+    u32 riff_size;
+    char wave_magic[4];
+    char fmt_magic[4];
+    u32 fmt_size;
+    u16 fmt_format;
+    u16 fmt_channels;
+    u32 fmt_sampRate;
+    u32 fmt_bytesPerSec;
+    u16 fmt_blockAlign;
+    u16 fmt_bitsPerSample;
+    char data_magic[4];
+    u32 data_size;
+} WAVHeader;
+
+// DOES NOT WORK YET
+static void play_sound_effect(const char* filepath) {
+    FILE* f = fopen(filepath, "rb");
+    if (!f) {
+        printf("Failed to open sound: %s\n", filepath);
+        return;
+    }
+
+    WAVHeader header;
+    fread(&header, sizeof(WAVHeader), 1, f);
+
+    if (memcmp(header.riff_magic, "RIFF", 4) != 0 || memcmp(header.wave_magic, "WAVE", 4) != 0) {
+        printf("Invalid WAV file: %s\n", filepath);
+        fclose(f);
+        return;
+    }
+
+    // Load audio data into memory
+    u8* buffer = (u8*)linearAlloc(header.data_size);
+    if (!buffer) {
+        printf("Failed to allocate audio buffer\n");
+        fclose(f);
+        return;
+    }
+    fread(buffer, 1, header.data_size, f);
+    fclose(f);
+
+    // Configure NDSP channel 0
+    ndspChnReset(0);
+    ndspChnSetInterp(0, NDSP_INTERP_POLYPHASE);
+    ndspChnSetRate(0, header.fmt_sampRate);
+    ndspChnSetFormat(0,
+        (header.fmt_channels == 2 ? NDSP_FORMAT_STEREO_PCM16 : NDSP_FORMAT_MONO_PCM16));
+
+    // Set mix
+    float mix[12];
+    memset(mix, 0, sizeof(mix));
+    mix[0] = 1.0f; // left
+    mix[1] = 1.0f; // right
+    ndspChnSetMix(0, mix);
+
+    // Setup audio wave buffer
+    ndspWaveBuf waveBuf;
+    memset(&waveBuf, 0, sizeof(waveBuf));
+    waveBuf.data_vaddr = buffer;
+    waveBuf.nsamples = header.data_size / header.fmt_blockAlign;
+    waveBuf.looping = false;
+
+    DSP_FlushDataCache(buffer, header.data_size);
+    ndspChnWaveBufAdd(0, &waveBuf);
+
+    // Let it play (non-blocking; will play in background)
+}
+
 // Reset puck to center, moving toward right
-static void reset_puck(void) {
+static void reset_puck() {
     puck.size = PUCK_SIZE;
     puck.x = (SCREEN_W - puck.size) * 0.5f;
     puck.y = (SCREEN_H - puck.size) * 0.5f;
@@ -94,7 +172,7 @@ static void reset_puck(void) {
 }
 
 // Init game objects
-static void init_game(void) {
+static void init_game() {
     left_paddle.x = 40;
     left_paddle.y = SCREEN_H * 0.5f;
     left_paddle.angle = 0;
@@ -145,35 +223,46 @@ static void handlePaddleCollision(Paddle *p) {
     float dy = puck.y + puck.size/2 - p->y;
     float dist = sqrtf(dx*dx + dy*dy);
 
-    if (dist < (PADDLE_H/2 + puck.size/2)) {
+    if(dist < (PADDLE_H/2 + puck.size/2)) {
         // reflect puck based on paddle angle
         float nx = cosf(p->angle);
         float ny = sinf(p->angle);
-
         float dot = puck.vx*nx + puck.vy*ny;
         puck.vx -= 2*dot*nx;
         puck.vy -= 2*dot*ny;
 
         puck.vx *= PUCK_SPEED_BOOST;
         puck.vy *= PUCK_SPEED_BOOST;
+        if (puck.vx > PUCK_SPEED_MAX) {
+            puck.vx = PUCK_SPEED_MAX;
+        }
+        if (puck.vy > PUCK_SPEED_MAX) {
+            puck.vy = PUCK_SPEED_MAX;
+        }
     }
+
 
     if(dist < (GOALIE_H/2 + puck.size/2)) {
         // reflect puck based on paddle angle
         float nx = cosf(p->angle);
         float ny = sinf(p->angle);
-
         float dot = puck.vx*nx + puck.vy*ny;
         puck.vx -= 2*dot*nx;
         puck.vy -= 2*dot*ny;
 
         puck.vx *= PUCK_SPEED_BOOST;
         puck.vy *= PUCK_SPEED_BOOST;
+        if (puck.vx > PUCK_SPEED_MAX) {
+            puck.vx = PUCK_SPEED_MAX;
+        }
+        if (puck.vy > PUCK_SPEED_MAX) {
+            puck.vy = PUCK_SPEED_MAX;
+        }
     }
 }
 
 // Update puck (walls + paddles + goals)
-static void update_puck(void) {
+static void update_puck() {
     puck.x += puck.vx;
     puck.y += puck.vy;
 
@@ -241,7 +330,7 @@ static void clamp_goalie(Paddle *p) {
 }
 
 // Simple AI
-static void update_ai(void) {
+static void update_ai() {
     if (fabsf(puck.y - left_paddle.y) > 2.0f) {
         if (puck.y < left_paddle.y) left_paddle.y -= AI_SPEED;
         else left_paddle.y += AI_SPEED;
@@ -255,11 +344,24 @@ static void update_ai(void) {
             if(left_paddle.x > SCREEN_W/2) left_paddle.x = SCREEN_W/2;
         }
     }
+    if (fabsf(puck.y - left_goalie.y) > 2.0f) {
+        if (puck.y < left_goalie.y) left_goalie.y -= AI_SPEED;
+        else left_goalie.y += AI_SPEED;
+
+    }
+    if(fabsf(puck.x - left_goalie.x) < 25.0f) {
+        if (puck.x < left_goalie.x) left_goalie.x += AI_SPEED;
+        else{
+            left_goalie.x -= AI_SPEED;
+            if(left_goalie.x < 40) left_goalie.x = 40;
+            if(left_goalie.x > SCREEN_W/2) left_goalie.x = SCREEN_W/2;
+        }
+    }
     clamp_paddle(&left_paddle);
 }
 
 // Draw rink + objects
-static void draw_scene(void) {
+static void draw_scene() {
     float rink_x = (SCREEN_W - RINK_W) * 0.5f;
     float rink_y = (SCREEN_H - RINK_H) * 0.5f;
 
@@ -268,8 +370,8 @@ static void draw_scene(void) {
 
 
     // Top/bottom borders
-    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, 4, C2D_Color32(0,0,0,255));
-    C2D_DrawRectSolid(rink_x, rink_y + RINK_H - 4, 0, RINK_W, 4, C2D_Color32(0,0,0,255));
+    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, 4, C2D_Color32(255, 0,0,255));
+    C2D_DrawRectSolid(rink_x, rink_y + RINK_H - 4, 0, RINK_W, 4, C2D_Color32(255,0,0,255));
 
     // Goal posts
     float goal_gap = 60;
@@ -281,23 +383,23 @@ static void draw_scene(void) {
 
     // Paddles
     drawPaddle(&left_paddle, C2D_Color32(0,0,255,255));
-    drawPaddle(&right_paddle, C2D_Color32(0,255,0,255));
+    drawPaddle(&right_paddle, C2D_Color32(0,128,0,255));
 
     // Goalies
     drawGoalie(&left_goalie, C2D_Color32(0,0,255,255));
-    drawGoalie(&right_goalie, C2D_Color32(0,255,0,255));
+    drawGoalie(&right_goalie, C2D_Color32(0,128,0,255));
 
     // Puck
     C2D_DrawRectSolid(puck.x, puck.y, 0.2f, puck.size, puck.size, C2D_Color32(0,0,0,255));
 }
 
-static void reset_game(void) {
+static void reset_game() {
     left_score = 0;
     right_score = 0;
     reset_puck();
 }
 
-static void pause(void) {
+static void pauseGame() {
     // Simple pause - wait for START again
     while (1) {
         hidScanInput();
@@ -310,6 +412,8 @@ static void pause(void) {
 int main(int argc, char** argv) {
     srand((unsigned int)svcGetSystemTick());
 
+    
+    ndspInit();
     gfxInitDefault();
     PrintConsole bottomScreen;
     consoleInit(GFX_BOTTOM, &bottomScreen);
@@ -329,9 +433,9 @@ int main(int argc, char** argv) {
         u32 kDown = hidKeysDown();
         u32 kHeld = hidKeysHeld();
 
-        if (kDown & KEY_START) pause();
+        if (kDown & KEY_START) pauseGame();
         if (kDown & KEY_SELECT) reset_game();
-        if (kDown & KEY_B) pause();
+        if (kDown & KEY_B) pauseGame();
 
         // Circle Pad for right paddle
         circlePosition cp;
@@ -340,8 +444,8 @@ int main(int argc, char** argv) {
         right_paddle.y -= (float)cp.dy / 477.0f * AI_SPEED;
         clamp_paddle(&right_paddle);
 
-        if(kHeld & KEY_DUP) right_goalie.y -= PADDLE_SPEED * 1.25f;
-        if(kHeld & KEY_DDOWN) right_goalie.y += PADDLE_SPEED * 1.25f;
+        if(kHeld & KEY_DUP) right_goalie.y -= PADDLE_SPEED * 0.8f;
+        if(kHeld & KEY_DDOWN) right_goalie.y += PADDLE_SPEED * 0.8f;
         clamp_goalie(&right_goalie);
 
         if (kHeld & KEY_L) right_paddle.angle -= ROT_SPEED;
@@ -372,5 +476,6 @@ int main(int argc, char** argv) {
     C2D_Fini();
     C3D_Fini();
     gfxExit();
+    ndspExit();
     return 0;
 }
