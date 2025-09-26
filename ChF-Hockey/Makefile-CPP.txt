@@ -1,0 +1,91 @@
+#---------------------------------------------------------------------------------
+# Project Settings
+#---------------------------------------------------------------------------------
+TARGET      := 3ds_pong
+BUILD       := build
+SOURCES     := source
+DATA        := data
+INCLUDES    := include
+OUTPUT      := $(TARGET).3dsx
+
+#---------------------------------------------------------------------------------
+# Toolchain & Environment
+#---------------------------------------------------------------------------------
+DEVKITPRO   ?= $(shell echo $$DEVKITPRO)
+DEVKITARM   ?= $(DEVKITPRO)/devkitARM
+
+PREFIX      := arm-none-eabi-
+CXX         := $(PREFIX)g++
+CC          := $(PREFIX)gcc
+AS          := $(PREFIX)as
+LD          := $(PREFIX)g++
+AR          := $(PREFIX)ar
+OBJCOPY     := $(PREFIX)objcopy
+OBJDUMP     := $(PREFIX)objdump
+
+#---------------------------------------------------------------------------------
+# Flags
+#---------------------------------------------------------------------------------
+ARCH        := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+
+CFLAGS      := -Wall -O2 -mword-relocations $(ARCH) \
+               -ffunction-sections -fdata-sections \
+               -DARM11 -D_3DS
+
+CXXFLAGS    := $(CFLAGS) -std=c++17 -fno-exceptions -fno-rtti
+
+ASFLAGS     := -g $(ARCH)
+LDFLAGS     := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(TARGET).map
+
+#---------------------------------------------------------------------------------
+# Includes & Libs
+#---------------------------------------------------------------------------------
+INCLUDE     := -I$(SOURCES) -I$(INCLUDES) \
+               -I$(DEVKITPRO)/libctru/include \
+               -I$(DEVKITPRO)/portlibs/3ds/include
+
+LIBDIRS     := -L$(DEVKITPRO)/libctru/lib \
+               -L$(DEVKITPRO)/portlibs/3ds/lib
+
+LIBS		:= -lbox2d -lcitro2d -lctru -lm
+
+#---------------------------------------------------------------------------------
+# Build Rules
+#---------------------------------------------------------------------------------
+# Collect source files
+CFILES      := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
+CPPFILES    := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
+SFILES      := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.s))
+
+OFILES      := $(addprefix $(BUILD)/,$(CFILES:.c=.o) $(CPPFILES:.cpp=.o) $(SFILES:.s=.o))
+
+# Default target
+all: $(OUTPUT)
+
+# Build .3dsx
+$(OUTPUT): $(OFILES)
+	@echo "[LD] $@"
+	$(LD) $(LDFLAGS) -o $@ $(OFILES) $(LIBDIRS) $(LIBS)
+
+# Compile .cpp
+$(BUILD)/%.o: %.cpp
+	@mkdir -p $(@D)
+	@echo "[CXX] $<"
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+# Compile .c
+$(BUILD)/%.o: %.c
+	@mkdir -p $(@D)
+	@echo "[CC] $<"
+	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
+
+# Assemble
+$(BUILD)/%.o: %.s
+	@mkdir -p $(@D)
+	@echo "[AS] $<"
+	$(AS) $(ASFLAGS) -o $@ $<
+
+# Cleanup
+clean:
+	@echo "[CLEAN]"
+	@rm -rf $(BUILD) $(OUTPUT) $(TARGET).map

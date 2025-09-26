@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+
 // Mods
 
 // End Mods
@@ -106,59 +107,11 @@ typedef struct {
     u32 data_size;
 } WAVHeader;
 
-// DOES NOT WORK YET
-static void play_sound_effect(const char* filepath) {
-    FILE* f = fopen(filepath, "rb");
-    if (!f) {
-        printf("Failed to open sound: %s\n", filepath);
-        return;
-    }
+// Music playback
+/*
+If this doesn't work, I will not implement any sound to the game.
+*/
 
-    WAVHeader header;
-    fread(&header, sizeof(WAVHeader), 1, f);
-
-    if (memcmp(header.riff_magic, "RIFF", 4) != 0 || memcmp(header.wave_magic, "WAVE", 4) != 0) {
-        printf("Invalid WAV file: %s\n", filepath);
-        fclose(f);
-        return;
-    }
-
-    // Load audio data into memory
-    u8* buffer = (u8*)linearAlloc(header.data_size);
-    if (!buffer) {
-        printf("Failed to allocate audio buffer\n");
-        fclose(f);
-        return;
-    }
-    fread(buffer, 1, header.data_size, f);
-    fclose(f);
-
-    // Configure NDSP channel 0
-    ndspChnReset(0);
-    ndspChnSetInterp(0, NDSP_INTERP_POLYPHASE);
-    ndspChnSetRate(0, header.fmt_sampRate);
-    ndspChnSetFormat(0,
-        (header.fmt_channels == 2 ? NDSP_FORMAT_STEREO_PCM16 : NDSP_FORMAT_MONO_PCM16));
-
-    // Set mix
-    float mix[12];
-    memset(mix, 0, sizeof(mix));
-    mix[0] = 1.0f; // left
-    mix[1] = 1.0f; // right
-    ndspChnSetMix(0, mix);
-
-    // Setup audio wave buffer
-    ndspWaveBuf waveBuf;
-    memset(&waveBuf, 0, sizeof(waveBuf));
-    waveBuf.data_vaddr = buffer;
-    waveBuf.nsamples = header.data_size / header.fmt_blockAlign;
-    waveBuf.looping = false;
-
-    DSP_FlushDataCache(buffer, header.data_size);
-    ndspChnWaveBufAdd(0, &waveBuf);
-
-    // Let it play (non-blocking; will play in background)
-}
 
 // Reset puck to center, moving toward right
 static void reset_puck() {
@@ -476,6 +429,5 @@ int main(int argc, char** argv) {
     C2D_Fini();
     C3D_Fini();
     gfxExit();
-    ndspExit();
     return 0;
 }
