@@ -30,11 +30,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include "tinyc2.h"
 
-
-// Mods
-
-// End Mods
+// Mods Go Below
+// Remove this comment, add your includes here
+// Mods Go Above
 
 // Screen constants
 #define SCREEN_W 400
@@ -47,10 +47,10 @@
 // Gameplay geometry
 #define PUCK_SIZE 12.0f
 #define PADDLE_W 6.0f
-#define PADDLE_H 40.0f
+#define PADDLE_H 60.0f
 
-#define GOALIE_W 6.0f
-#define GOALIE_H 10.0f
+#define GOALIE_W 10.0f
+#define GOALIE_H 40.0f
 #define GOALIE_X 10.0f
 #define GOALIE_Y_LIMIT_TOP ((RINK_H * 0.5f) + 10.0f)
 #define GOALIE_Y_LIMIT_BOTTOM ((RINK_H * 0.5f) - 10.0f)
@@ -302,15 +302,8 @@ static void update_ai() {
         else left_goalie.y += AI_SPEED;
 
     }
-    if(fabsf(puck.x - left_goalie.x) < 25.0f) {
-        if (puck.x < left_goalie.x) left_goalie.x += AI_SPEED;
-        else{
-            left_goalie.x -= AI_SPEED;
-            if(left_goalie.x < 40) left_goalie.x = 40;
-            if(left_goalie.x > SCREEN_W/2) left_goalie.x = SCREEN_W/2;
-        }
-    }
     clamp_paddle(&left_paddle);
+    clamp_goalie(&left_goalie);
 }
 
 // Draw rink + objects
@@ -319,20 +312,21 @@ static void draw_scene() {
     float rink_y = (SCREEN_H - RINK_H) * 0.5f;
 
     // Rink background
-    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, RINK_H, C2D_Color32(161,191,188,255));
+    C2D_DrawRectSolid(0, 0, 0, SCREEN_W, SCREEN_H, C2D_Color32(0,255,128,255));
+    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, RINK_H, C2D_Color32(161,191,200,255));
 
 
     // Top/bottom borders
-    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, 4, C2D_Color32(255, 0,0,255));
-    C2D_DrawRectSolid(rink_x, rink_y + RINK_H - 4, 0, RINK_W, 4, C2D_Color32(255,0,0,255));
+    C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, 4, C2D_Color32(255, 255,255,255));
+    C2D_DrawRectSolid(rink_x, rink_y + RINK_H - 4, 0, RINK_W, 4, C2D_Color32(255,255,255,255));
 
     // Goal posts
     float goal_gap = 60;
     float gap_y = (SCREEN_H - goal_gap) * 0.5f;
-    C2D_DrawRectSolid(rink_x, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(255,0,0,255));
-    C2D_DrawRectSolid(rink_x, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(255,0,0,255));
-    C2D_DrawRectSolid(rink_x + RINK_W - 4, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(255,0,0,255));
-    C2D_DrawRectSolid(rink_x + RINK_W - 4, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(255,0,0,255));
+    C2D_DrawRectSolid(rink_x, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(255,255,255,255));
+    C2D_DrawRectSolid(rink_x, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(255,255,255,255));
+    C2D_DrawRectSolid(rink_x + RINK_W - 4, rink_y, 0, 4, gap_y - rink_y, C2D_Color32(255,255,255,255));
+    C2D_DrawRectSolid(rink_x + RINK_W - 4, gap_y + goal_gap, 0, 4, rink_y + RINK_H - (gap_y + goal_gap), C2D_Color32(255,255,255,255));
 
     // Paddles
     drawPaddle(&left_paddle, C2D_Color32(0,0,255,255));
