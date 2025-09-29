@@ -1,4 +1,4 @@
-DISCLAIMER: Channel F 'Hockey' (3DS Edition) is not in a FULLY playable state at the moment, however, when it is finished I will add the release version of the game below.
+DISCLAIMER: This game is not in a FULLY playable state at the moment, however, when it is finished I will add the release version of the game below.
 
 !!! IMPORTANT !!! - The name below is NOT the final name of this project, and is likely to change over the course of development.
 # Pong 2 (3DS Edition) - DEMO
@@ -24,6 +24,8 @@ As of the creation of this repository, I am a first-year CS Major at the Univers
 # How can I play?
 To play Channel Fun 'Hockey', you will need to get an original 3DS (or newer) with CFW (Custom Firmware) OR a 3DS emulator (not recommended for multiplayer). From there, download the .3dsx file above and send it to the appropriate /3ds/ folder on your SD card. After that, it should be available for you to play. Enjoy!
 
+# What Tools did you use?
+VSCode, devkitPro, Citra Nightly, and GitHub Desktop. Also, ChatGPT helped explain certain things.
 # Where's Singleplayer mode?
 Singleplayer will automatically load up, just press B to unpause the game and start playing!
 
