@@ -1,4 +1,6 @@
 DISCLAIMER: Channel F 'Hockey' (3DS Edition) is not in a FULLY playable state at the moment, however, when it is finished I will add the release version of the game below.
+
+!!! IMPORTANT !!! - "Channel F 'Hockey' (3DS Edition)" is NOT the final name of this project, and is likely to change over the course of development.
 # Channel F 'Hockey' (3DS Edition) - DEMO
 A Nintendo 3DS Homebrew version of the Fairchild Channel F video game "Hockey".
 
