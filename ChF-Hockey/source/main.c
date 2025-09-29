@@ -154,7 +154,7 @@ static void drawPaddle(Paddle *p, u32 color) {
     float x2 = p->x + halfLen * cosA;
     float y2 = p->y + halfLen * sinA;
 
-    C2D_DrawLine(x1, y1, color, x2, y2, color, PADDLE_H, 0);
+    C2D_DrawLine(x1, y1, color, x2, y2, color, PADDLE_H - 20, 0);
 }
 
 static void drawGoalie(Paddle *p, u32 color) {
@@ -176,7 +176,7 @@ static void handlePaddleCollision(Paddle *p) {
     float dy = puck.y + puck.size/2 - p->y;
     float dist = sqrtf(dx*dx + dy*dy);
 
-    if(dist < (PADDLE_H/2 + puck.size/2)) {
+    if((dist < (PADDLE_H/2 + puck.size/2 - 15))) {
         // reflect puck based on paddle angle
         float nx = cosf(p->angle);
         float ny = sinf(p->angle);
@@ -195,7 +195,7 @@ static void handlePaddleCollision(Paddle *p) {
     }
 
 
-    if(dist < (GOALIE_H/2 + puck.size/2)) {
+    if((dist < (GOALIE_H/2 + puck.size/4)) && (dist < (GOALIE_W + puck.size/4))) {
         // reflect puck based on paddle angle
         float nx = cosf(p->angle);
         float ny = sinf(p->angle);
@@ -416,6 +416,14 @@ int main(int argc, char** argv) {
         consoleClear();
         printf("Left Score: %d\n", left_score);
         printf("Right Score: %d\n", right_score);
+        if(left_score >= 10) {
+            printf("\nLeft Player Wins!\nPress SELECT to reset.");
+        } else if(right_score >= 10) {
+            printf("\nRight Player Wins!\nPress SELECT to reset.");
+        } else {
+            printf("\nPress B to pause.");
+        }
+        if(kDown & KEY_B) printf("\nPaused");
 
         gspWaitForVBlank();
     }
