@@ -30,7 +30,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "tinyc2.h"
+#include <sys/socket.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdint.h>
+#include "menu.c"
+
+// Multiplayer Infrared (MIR) Functionality:
+#include "net_ir.c"
+
 
 // Mods Go Below
 // Remove this comment, add your includes here
@@ -50,16 +58,16 @@
 #define PADDLE_H 60.0f
 
 #define GOALIE_W 10.0f
-#define GOALIE_H 40.0f
+#define GOALIE_H 30.0f
 #define GOALIE_X 10.0f
-#define GOALIE_Y_LIMIT_TOP ((RINK_H * 0.5f) + 10.0f)
-#define GOALIE_Y_LIMIT_BOTTOM ((RINK_H * 0.5f) - 10.0f)
+#define GOALIE_Y_LIMIT_TOP (SCREEN_H - 75.0f)
+#define GOALIE_Y_LIMIT_BOTTOM (75.0f)
 
 // Speeds
 #define PUCK_SPEED_INIT 2.5f
 #define PUCK_SPEED_BOOST 1.08f
 #define PUCK_SPEED_MAX 6.0f
-#define PADDLE_SPEED 7.0f
+#define PADDLE_SPEED 10.0f
 #define AI_SPEED 3.5f
 #define ROT_SPEED 0.05f
 
@@ -70,8 +78,13 @@ typedef struct {
 
 typedef struct {
     float x, y;
+} Goalie;
+
+typedef struct {
+    float x, y;
     float vx, vy;
     float size;
+    int justScored;
 } Puck;
 
 // Globals
@@ -81,8 +94,8 @@ static C3D_RenderTarget* bot_target;
 static Paddle left_paddle;
 static Paddle right_paddle;
 
-static Paddle left_goalie;
-static Paddle right_goalie;
+static Goalie left_goalie;
+static Goalie right_goalie;
 
 static Puck puck;
 
@@ -90,38 +103,16 @@ static Puck puck;
 static int left_score = 0;
 static int right_score = 0;
 
-// Basic WAV header
-typedef struct {
-    char riff_magic[4];
-    u32 riff_size;
-    char wave_magic[4];
-    char fmt_magic[4];
-    u32 fmt_size;
-    u16 fmt_format;
-    u16 fmt_channels;
-    u32 fmt_sampRate;
-    u32 fmt_bytesPerSec;
-    u16 fmt_blockAlign;
-    u16 fmt_bitsPerSample;
-    char data_magic[4];
-    u32 data_size;
-} WAVHeader;
-
-// Music playback
-/*
-If this doesn't work, I will not implement any sound to the game.
-*/
-
-
 // Reset puck to center, moving toward right
-static void reset_puck() {
-    puck.size = PUCK_SIZE;
-    puck.x = (SCREEN_W - puck.size) * 0.5f;
-    puck.y = (SCREEN_H - puck.size) * 0.5f;
+static void reset_puck(Puck* puck) {
+    puck->size = PUCK_SIZE;
+    puck->x = (SCREEN_W - puck->size) * 0.5f;
+    puck->y = (SCREEN_H - puck->size) * 0.5f;
     float ang = ((rand() % 60) - 30) * (M_PI / 180.0f);
-    puck.vx = cosf(ang) * PUCK_SPEED_INIT;
-    puck.vy = sinf(ang) * PUCK_SPEED_INIT;
-    if (puck.vx < 0) puck.vx = -puck.vx; // ensure toward right
+    puck->vx = cosf(ang) * PUCK_SPEED_INIT;
+    puck->vy = sinf(ang) * PUCK_SPEED_INIT;
+    if (puck->vx < 0) puck->vx = -puck->vx; // ensure toward right
+    puck->justScored = 0;
 }
 
 // Init game objects
@@ -140,7 +131,7 @@ static void init_game() {
     right_goalie.x = SCREEN_W - GOALIE_X;
     right_goalie.y = SCREEN_H * 0.5f;
 
-    reset_puck();
+    reset_puck(&puck);
 }
 
 // Draw paddle as a thick line (rotatable)
@@ -157,17 +148,17 @@ static void drawPaddle(Paddle *p, u32 color) {
     C2D_DrawLine(x1, y1, color, x2, y2, color, PADDLE_H - 20, 0);
 }
 
-static void drawGoalie(Paddle *p, u32 color) {
+static void drawGoalie(Goalie *p, u32 color) {
     float halfLen = GOALIE_W / 2.0f;
-    float cosA = cosf(p->angle);
-    float sinA = sinf(p->angle);
+    float cosA = cosf(0.0f);
+    float sinA = sinf(0.0f);
 
     float x1 = p->x - halfLen * cosA;
     float y1 = p->y - halfLen * sinA;
     float x2 = p->x + halfLen * cosA;
     float y2 = p->y + halfLen * sinA;
 
-    C2D_DrawLine(x1, y1, color, x2, y2, color, GOALIE_H, 0);
+    C2D_DrawLine(x1, y1, color, x2, y2, color, GOALIE_H - 10, 0);
 }
 
 // Handle paddle-puck collision (reflect using paddle angle)
@@ -193,18 +184,15 @@ static void handlePaddleCollision(Paddle *p) {
             puck.vy = PUCK_SPEED_MAX;
         }
     }
+}
 
-
-    if((dist < (GOALIE_H/2 + puck.size/4)) && (dist < (GOALIE_W + puck.size/4))) {
-        // reflect puck based on paddle angle
-        float nx = cosf(p->angle);
-        float ny = sinf(p->angle);
-        float dot = puck.vx*nx + puck.vy*ny;
-        puck.vx -= 2*dot*nx;
-        puck.vy -= 2*dot*ny;
-
-        puck.vx *= PUCK_SPEED_BOOST;
-        puck.vy *= PUCK_SPEED_BOOST;
+// Handle goalie-puck collision (simple AABB)
+static void handleGoalieCollision(Goalie *g) {
+    if (puck.x < g->x + GOALIE_W && puck.x + puck.size > g->x &&
+        puck.y < g->y + GOALIE_H && puck.y + puck.size > g->y) {
+        // Simple reflection
+        puck.vx = -puck.vx * PUCK_SPEED_BOOST;
+        puck.vy = -puck.vy * PUCK_SPEED_BOOST;
         if (puck.vx > PUCK_SPEED_MAX) {
             puck.vx = PUCK_SPEED_MAX;
         }
@@ -236,7 +224,7 @@ static void update_puck() {
         if (puck.y > gap_y && puck.y + puck.size < gap_y + goal_gap) {
             // Goal for right player
             right_score++;
-            reset_puck();
+            reset_puck(&puck);
             return;
         } else {
             puck.x = rink_left;
@@ -247,7 +235,7 @@ static void update_puck() {
         if (puck.y > gap_y && puck.y + puck.size < gap_y + goal_gap) {
             // Goal for left player
             left_score++;
-            reset_puck();
+            reset_puck(&puck);
             return;
         } else {
             puck.x = rink_right - puck.size;
@@ -258,6 +246,10 @@ static void update_puck() {
     // Paddle collisions
     handlePaddleCollision(&left_paddle);
     handlePaddleCollision(&right_paddle);
+
+    // Goalie collisions
+    handleGoalieCollision(&left_goalie);
+    handleGoalieCollision(&right_goalie);
 }
 
 // Clamp paddle inside rink
@@ -272,14 +264,16 @@ static void clamp_paddle(Paddle *p) {
 }
 
 // Clamp paddle inside rink
-static void clamp_goalie(Paddle *p) {
-    float rink_top = (SCREEN_H - RINK_H) * 0.5f;
-    float rink_bottom = rink_top + RINK_H;
-
+static void clamp_goalie(Goalie *p, int side) {
+    if(side == 0){
+        p->x = GOALIE_X;
+    } else if(side == 1) {
+        p->x = SCREEN_W - GOALIE_X;
+    }
     // Keep paddle center within borders, accounting for paddle half-height
     float halfLen = GOALIE_H / 2.0f;
-    if (p->y - halfLen < rink_top) p->y = rink_top + halfLen;
-    if (p->y + halfLen > rink_bottom) p->y = rink_bottom - halfLen;
+    if (p->y - halfLen < GOALIE_Y_LIMIT_BOTTOM) p->y = GOALIE_Y_LIMIT_BOTTOM + halfLen;
+    if (p->y + halfLen > GOALIE_Y_LIMIT_TOP) p->y = GOALIE_Y_LIMIT_TOP - halfLen;
 }
 
 // Simple AI
@@ -303,7 +297,7 @@ static void update_ai() {
 
     }
     clamp_paddle(&left_paddle);
-    clamp_goalie(&left_goalie);
+    clamp_goalie(&left_goalie, 0);
 }
 
 // Draw rink + objects
@@ -343,11 +337,11 @@ static void draw_scene() {
 static void reset_game() {
     left_score = 0;
     right_score = 0;
-    reset_puck();
+    reset_puck(&puck);
 }
 
 static void pauseGame() {
-    // Simple pause - wait for START again
+    // Simple pause - wait for B again
     while (1) {
         hidScanInput();
         u32 kDown = hidKeysDown();
@@ -356,9 +350,17 @@ static void pauseGame() {
     }
 }
 
+static bool isHost = false;
+
+/* This will not be availble until later.
+static void displayText(const char* text) {
+    C2D_TextBuf textBuf = C2D_TextBufNew(4096);
+    C2D_Text text = {};
+}
+*/
+
 int main(int argc, char** argv) {
     srand((unsigned int)svcGetSystemTick());
-
     
     ndspInit();
     gfxInitDefault();
@@ -380,10 +382,16 @@ int main(int argc, char** argv) {
         u32 kDown = hidKeysDown();
         u32 kHeld = hidKeysHeld();
 
+        touchPosition touch;
+        hidTouchRead(&touch);
+        if (kDown & KEY_TOUCH) {
+            netSelectModeFromTouch(&touch);
+        }
+
         if (kDown & KEY_START) pauseGame();
         if (kDown & KEY_SELECT) reset_game();
         if (kDown & KEY_B) pauseGame();
-
+        
         // Circle Pad for right paddle
         circlePosition cp;
         hidCircleRead(&cp);
@@ -393,7 +401,7 @@ int main(int argc, char** argv) {
 
         if(kHeld & KEY_DUP) right_goalie.y -= PADDLE_SPEED * 0.8f;
         if(kHeld & KEY_DDOWN) right_goalie.y += PADDLE_SPEED * 0.8f;
-        clamp_goalie(&right_goalie);
+        clamp_goalie(&right_goalie, 1);
 
         if (kHeld & KEY_L) right_paddle.angle -= ROT_SPEED;
         if (kHeld & KEY_R) right_paddle.angle += ROT_SPEED;
@@ -401,8 +409,69 @@ int main(int argc, char** argv) {
         if(right_paddle.x > SCREEN_W - 40) right_paddle.x = SCREEN_W - 40;
         if(right_paddle.x < SCREEN_W/2) right_paddle.x = SCREEN_W/2;
 
-        update_ai();
-        update_puck();
+        if (currentMode == NET_MODE_IR_HOST) {
+            // --- HOST LOGIC ---
+            update_ai();       // only host runs AI
+            update_puck();     // only host runs puck physics + scoring
+
+        // Prepare packet to send to client
+            struct {
+                float hostPaddleX, hostPaddleY;
+                float puckX, puckY;
+                int leftScore, rightScore;
+            } hostPkt;
+
+            hostPkt.hostPaddleX = right_paddle.x;
+            hostPkt.hostPaddleY = right_paddle.y;
+            hostPkt.puckX = puck.x;
+            hostPkt.puckY = puck.y;
+            hostPkt.leftScore = left_score;
+            hostPkt.rightScore = right_score;
+
+            netSendPacket(&hostPkt, sizeof(hostPkt));
+
+            // Receive client paddle
+            struct {
+                float clientPaddleX, clientPaddleY;
+            } clientPkt;
+
+            if (netRecvPacket(&clientPkt, sizeof(clientPkt)) > 0) {
+                left_paddle.x = clientPkt.clientPaddleX;
+                left_paddle.y = clientPkt.clientPaddleY;
+            }
+
+        } else if (currentMode == NET_MODE_IR_CLIENT) {
+            // --- CLIENT LOGIC ---
+            // Send own paddle position to host
+            struct {
+                float clientPaddleX, clientPaddleY;
+            } clientPkt;
+
+            clientPkt.clientPaddleX = right_paddle.x;
+            clientPkt.clientPaddleY = right_paddle.y;
+
+            netSendPacket(&clientPkt, sizeof(clientPkt));
+
+            // Receive puck + host paddle + scores
+            struct {
+                float hostPaddleX, hostPaddleY;
+                float puckX, puckY;
+                int leftScore, rightScore;
+            } hostPkt;
+
+            if (netRecvPacket(&hostPkt, sizeof(hostPkt)) > 0) {
+                left_paddle.x = hostPkt.hostPaddleX;
+                left_paddle.y = hostPkt.hostPaddleY;
+                puck.x = hostPkt.puckX;
+                puck.y = hostPkt.puckY;
+                left_score = hostPkt.leftScore;
+                right_score = hostPkt.rightScore;
+            }
+        } else {
+            // --- SINGLEPLAYER (no IR selected) ---
+            update_ai();
+            update_puck();
+        }
 
         // Draw top screen
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
@@ -416,14 +485,14 @@ int main(int argc, char** argv) {
         consoleClear();
         printf("Left Score: %d\n", left_score);
         printf("Right Score: %d\n", right_score);
+        
         if(left_score >= 10) {
             printf("\nLeft Player Wins!\nPress SELECT to reset.");
         } else if(right_score >= 10) {
             printf("\nRight Player Wins!\nPress SELECT to reset.");
         } else {
-            printf("\nPress B to pause.");
+            printf("\nPress B to pause.\nPress Y for Multiplayer Menu.");
         }
-        if(kDown & KEY_B) printf("\nPaused");
 
         gspWaitForVBlank();
     }
