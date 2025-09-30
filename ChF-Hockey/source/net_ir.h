@@ -1,5 +1,6 @@
 #pragma once
 #include <3ds.h>
+#include <3ds/services/iru.h>
 
 // Initialize/exit IR system
 void netInit(void);

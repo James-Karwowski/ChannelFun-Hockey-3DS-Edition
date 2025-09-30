@@ -36,10 +36,6 @@
 #include <stdint.h>
 #include "menu.c"
 
-// Multiplayer Infrared (MIR) Functionality:
-#include "net_ir.c"
-
-
 // Mods Go Below
 // Remove this comment, add your includes here
 // Mods Go Above
@@ -306,7 +302,7 @@ static void draw_scene() {
     float rink_y = (SCREEN_H - RINK_H) * 0.5f;
 
     // Rink background
-    C2D_DrawRectSolid(0, 0, 0, SCREEN_W, SCREEN_H, C2D_Color32(0,255,128,255));
+    C2D_DrawRectSolid(0, 0, 0, SCREEN_W, SCREEN_H, C2D_Color32(161,171,200,255));
     C2D_DrawRectSolid(rink_x, rink_y, 0, RINK_W, RINK_H, C2D_Color32(161,191,200,255));
 
 
@@ -384,9 +380,6 @@ int main(int argc, char** argv) {
 
         touchPosition touch;
         hidTouchRead(&touch);
-        if (kDown & KEY_TOUCH) {
-            netSelectModeFromTouch(&touch);
-        }
 
         if (kDown & KEY_START) pauseGame();
         if (kDown & KEY_SELECT) reset_game();
@@ -408,70 +401,10 @@ int main(int argc, char** argv) {
 
         if(right_paddle.x > SCREEN_W - 40) right_paddle.x = SCREEN_W - 40;
         if(right_paddle.x < SCREEN_W/2) right_paddle.x = SCREEN_W/2;
-
-        if (currentMode == NET_MODE_IR_HOST) {
-            // --- HOST LOGIC ---
-            update_ai();       // only host runs AI
-            update_puck();     // only host runs puck physics + scoring
-
-        // Prepare packet to send to client
-            struct {
-                float hostPaddleX, hostPaddleY;
-                float puckX, puckY;
-                int leftScore, rightScore;
-            } hostPkt;
-
-            hostPkt.hostPaddleX = right_paddle.x;
-            hostPkt.hostPaddleY = right_paddle.y;
-            hostPkt.puckX = puck.x;
-            hostPkt.puckY = puck.y;
-            hostPkt.leftScore = left_score;
-            hostPkt.rightScore = right_score;
-
-            netSendPacket(&hostPkt, sizeof(hostPkt));
-
-            // Receive client paddle
-            struct {
-                float clientPaddleX, clientPaddleY;
-            } clientPkt;
-
-            if (netRecvPacket(&clientPkt, sizeof(clientPkt)) > 0) {
-                left_paddle.x = clientPkt.clientPaddleX;
-                left_paddle.y = clientPkt.clientPaddleY;
-            }
-
-        } else if (currentMode == NET_MODE_IR_CLIENT) {
-            // --- CLIENT LOGIC ---
-            // Send own paddle position to host
-            struct {
-                float clientPaddleX, clientPaddleY;
-            } clientPkt;
-
-            clientPkt.clientPaddleX = right_paddle.x;
-            clientPkt.clientPaddleY = right_paddle.y;
-
-            netSendPacket(&clientPkt, sizeof(clientPkt));
-
-            // Receive puck + host paddle + scores
-            struct {
-                float hostPaddleX, hostPaddleY;
-                float puckX, puckY;
-                int leftScore, rightScore;
-            } hostPkt;
-
-            if (netRecvPacket(&hostPkt, sizeof(hostPkt)) > 0) {
-                left_paddle.x = hostPkt.hostPaddleX;
-                left_paddle.y = hostPkt.hostPaddleY;
-                puck.x = hostPkt.puckX;
-                puck.y = hostPkt.puckY;
-                left_score = hostPkt.leftScore;
-                right_score = hostPkt.rightScore;
-            }
-        } else {
-            // --- SINGLEPLAYER (no IR selected) ---
-            update_ai();
-            update_puck();
-        }
+        
+        // --- SINGLEPLAYER (no IR selected) ---
+        update_ai();
+        update_puck();
 
         // Draw top screen
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);

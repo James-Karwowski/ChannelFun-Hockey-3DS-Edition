@@ -1,6 +1,7 @@
 #include "net_ir.h"
 #include <stdio.h>
 #include <string.h>
+#include <3ds/services/iru.h>
 
 #define IRU_SHARED_MEM_SIZE 0x1000
 static u32* irSharedMem = NULL;
@@ -15,7 +16,7 @@ void netInit(void) {
     if (R_FAILED(r)) {
         printf("IRU init failed: 0x%08lX\n", r);
     }
-    iruEnableRecvEvent();
+    IRU_EnableRecvEvent();
 }
 
 void netExit(void) {
